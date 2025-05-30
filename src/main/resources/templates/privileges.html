@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Privileges</title>
+</head>
+<body>
+<div th:replace="~{layout.html :: layout(title='Privileges', content=~{::div})}">
+    <div>
+        <h2>Privileges</h2>
+        <form th:action="@{/api/v1/privileges}" method="post" class="mb-4">
+            <div class="row g-3">
+                <div class="col">
+                    <input type="text" class="form-control" name="name" placeholder="Privilege Name" required>
+                </div>
+                <div class="col">
+                    <input type="text" class="form-control" name="description" placeholder="Description">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Add Privilege</button>
+                </div>
+            </div>
+        </form>
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="privilege : ${privileges.content}">
+                <td th:text="${privilege.name}"></td>
+                <td th:text="${privilege.description}"></td>
+                <td>
+                    <form th:action="@{/api/v1/privileges/{id}(id=${privilege.id})}" method="post" th:method="put" style="display:inline;">
+                        <input type="hidden" name="_method" value="PUT">
+                        <input type="text" name="name" th:value="${privilege.name}">
+                        <input type="text" name="description" th:value="${privilege.description}">
+                        <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                    </form>
+                    <form th:action="@{/api/v1/privileges/{id}(id=${privilege.id})}" method="post" th:method="delete" style="display:inline;">
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <div th:if="${privileges.totalPages > 1}">
+            <nav>
+                <ul class="pagination">
+                    <li class="page-item" th:classappend="${privileges.first} ? 'disabled'">
+                        <a class="page-link" th:href="@{/privileges(page=${privileges.number - 1}, size=${privileges.size})}">Previous</a>
+                    </li>
+                    <li class="page-item" th:each="i : ${#numbers.sequence(0, privileges.totalPages - 1)}" th:classappend="${i == privileges.number} ? 'active'">
+                        <a class="page-link" th:href="@{/privileges(page=${i}, size=${privileges.size})}" th:text="${i + 1}"></a>
+                    </li>
+                    <li class="page-item" th:classappend="${privileges.last} ? 'disabled'">
+                        <a class="page-link" th:href="@{/privileges(page=${privileges.number + 1}, size=${privileges.size})}">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+</body>
+</html>
