@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  shop-management-db:
+    image: postgres:15
+    container_name: shop-management-db
+    environment:
+      POSTGRES_DB: shop_management_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5436:5432"
+    volumes:
+      - shop-management-data:/var/lib/postgresql/data
+    networks:
+      - supermarket-network
+  shop-management-service:
+    build: .
+    container_name: shop-management-service
+    ports:
+      - "8085:8085"
+    environment:
+      DB_HOST: shop-management-db
+      DB_PORT: 5432
+      DB_NAME: shop_management_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    depends_on:
+      - shop-management-db
+    networks:
+      - supermarket-network
+volumes:
+  shop-management-data:
+networks:
+  supermarket-network:
+    driver: bridge
