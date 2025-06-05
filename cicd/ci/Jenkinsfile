@@ -6,13 +6,24 @@ pipeline {
         REPO_URL = 'https://github.com/abelWiiv/B2B-supermarket-sales-system.git'
         SONAR_AUTH_TOKEN = credentials('sonarqube')
         DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'
-        IMAGE_NAME = 'abelwiiv/b2b-supermarket-sales-system-usermanagement' // Adjusted for UserManagement
+        IMAGE_NAME = 'abelwiiv/b2b-supermarket-sales-system-usermanagement'
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         SONAR_HOST_URL = 'http://sonarqube:9000'
-        MICROSERVICE_DIR = 'UserManagement' // Directory for UserManagement
+        MICROSERVICE_DIR = 'UserManagement'
+        // Add Docker environment variables for macOS with Docker Desktop
+        PATH = "/usr/local/bin:$PATH" // Adjust if Docker CLI is elsewhere
+        DOCKER_HOST = "unix:///Users/${USER}/.docker/run/docker.sock" // Replace ${USER} with your macOS username
     }
 
     stages {
+        stage('Debug Docker') {
+            steps {
+                sh 'echo $PATH'
+                sh 'docker --version'
+                sh 'docker info'
+            }
+        }
+
         stage('Checkout') {
             steps {
                 checkout scmGit(
@@ -24,19 +35,6 @@ pipeline {
                 )
             }
         }
-
-//         stage('Unit Test') {
-//             steps {
-//                 dir("${MICROSERVICE_DIR}") {
-//                     sh 'mvn test'
-//                 }
-//             }
-//             post {
-//                 always {
-//                     junit allowEmptyResults: true, testResults: "${MICROSERVICE_DIR}/target/surefire-reports/*.xml"
-//                 }
-//             }
-//         }
 
         stage('SonarQube Analysis') {
             steps {
@@ -61,18 +59,25 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 dir("${MICROSERVICE_DIR}") {
-                    sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
+                    script {
+                        // Use Docker Pipeline Plugin to build the image
+                        def dockerImage = docker.build("${IMAGE_NAME}:${DOCKER_TAG}")
+                        // Store the image in a variable for use in the push stage
+                        env.DOCKER_IMAGE = dockerImage.id
+                    }
                 }
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                    sh "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
-                    sh "docker push ${IMAGE_NAME}:${DOCKER_TAG}"
-                    sh "docker tag ${IMAGE_NAME}:${DOCKER_TAG} ${IMAGE_NAME}:latest"
-                    sh "docker push ${IMAGE_NAME}:latest"
+                script {
+                    // Use Docker Pipeline Plugin to handle registry authentication and push
+                    docker.withRegistry('https://registry.hub.docker.com', "${DOCKER_CREDENTIALS_ID}") {
+                        def dockerImage = docker.image("${IMAGE_NAME}:${DOCKER_TAG}")
+                        dockerImage.push()
+                        dockerImage.push('latest')
+                    }
                 }
             }
         }
@@ -80,6 +85,7 @@ pipeline {
 
     post {
         always {
+            // Clean up Docker images
             sh "docker rmi ${IMAGE_NAME}:${DOCKER_TAG} || true"
             sh "docker rmi ${IMAGE_NAME}:latest || true"
         }
@@ -91,3 +97,99 @@ pipeline {
         }
     }
 }
+
+// pipeline {
+//     agent any
+//
+//     environment {
+//         GITHUB_CREDENTIALS_ID = 'github-token'
+//         REPO_URL = 'https://github.com/abelWiiv/B2B-supermarket-sales-system.git'
+//         SONAR_AUTH_TOKEN = credentials('sonarqube')
+//         DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'
+//         IMAGE_NAME = 'abelwiiv/b2b-supermarket-sales-system-usermanagement' // Adjusted for UserManagement
+//         DOCKER_TAG = "${env.BUILD_NUMBER}"
+//         SONAR_HOST_URL = 'http://sonarqube:9000'
+//         MICROSERVICE_DIR = 'UserManagement' // Directory for UserManagement
+//     }
+//
+//     stages {
+//         stage('Checkout') {
+//             steps {
+//                 checkout scmGit(
+//                     branches: [[name: '*/main']],
+//                     userRemoteConfigs: [[
+//                         url: "${REPO_URL}",
+//                         credentialsId: "${GITHUB_CREDENTIALS_ID}"
+//                     ]]
+//                 )
+//             }
+//         }
+//
+// //         stage('Unit Test') {
+// //             steps {
+// //                 dir("${MICROSERVICE_DIR}") {
+// //                     sh 'mvn test'
+// //                 }
+// //             }
+// //             post {
+// //                 always {
+// //                     junit allowEmptyResults: true, testResults: "${MICROSERVICE_DIR}/target/surefire-reports/*.xml"
+// //                 }
+// //             }
+// //         }
+//
+//         stage('SonarQube Analysis') {
+//             steps {
+//                 dir("${MICROSERVICE_DIR}") {
+//                     withSonarQubeEnv('SonarQube') {
+//                         sh "mvn sonar:sonar \
+//                             -Dsonar.host.url=${SONAR_HOST_URL} \
+//                             -Dsonar.login=${SONAR_AUTH_TOKEN}"
+//                     }
+//                 }
+//             }
+//         }
+//
+//         stage('Build') {
+//             steps {
+//                 dir("${MICROSERVICE_DIR}") {
+//                     sh 'mvn clean package -DskipTests'
+//                 }
+//             }
+//         }
+//
+//         stage('Build Docker Image') {
+//             steps {
+//                 dir("${MICROSERVICE_DIR}") {
+//                     script {
+//                         def dockerImage = docker.build("abelwiiv/b2b-supermarket-sales-system-usermanagement:10")
+//                     }
+//                 }
+//             }
+//         }
+//
+//         stage('Push Docker Image') {
+//             steps {
+//                 withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+//                     sh "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
+//                     sh "docker push ${IMAGE_NAME}:${DOCKER_TAG}"
+//                     sh "docker tag ${IMAGE_NAME}:${DOCKER_TAG} ${IMAGE_NAME}:latest"
+//                     sh "docker push ${IMAGE_NAME}:latest"
+//                 }
+//             }
+//         }
+//     }
+//
+//     post {
+//         always {
+//             sh "docker rmi ${IMAGE_NAME}:${DOCKER_TAG} || true"
+//             sh "docker rmi ${IMAGE_NAME}:latest || true"
+//         }
+//         success {
+//             echo 'Pipeline completed successfully!'
+//         }
+//         failure {
+//             echo 'Pipeline failed. Check logs for details.'
+//         }
+//     }
+// }
