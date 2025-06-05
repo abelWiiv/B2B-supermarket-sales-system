@@ -1,5 +1,11 @@
 pipeline {
-    agent any
+    // Specify a Docker-enabled agent (optional, use if Jenkins runs in a container)
+    agent {
+        docker {
+            image 'jenkins/inbound-agent:alpine-jdk17'
+            args '-v /Users/ATolcha/.docker/run/docker.sock:/var/run/docker.sock -v /usr/local/bin/docker:/usr/local/bin/docker'
+        }
+    }
 
     environment {
         GITHUB_CREDENTIALS_ID = 'github-token'
@@ -10,9 +16,9 @@ pipeline {
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         SONAR_HOST_URL = 'http://sonarqube:9000'
         MICROSERVICE_DIR = 'UserManagement'
-        // Docker environment variables for macOS with Docker Desktop
-        DOCKER_HOST = 'unix:///Users/ATolcha/.docker/run/docker.sock' // Replace with your macOS username
-        PATH = "/usr/local/bin:/opt/homebrew/bin:${env.PATH}" // Append to existing PATH
+        // Docker environment variables for macOS
+        DOCKER_HOST = 'unix:///Users/ATolcha/.docker/run/docker.sock'
+        PATH = "/usr/local/bin:/opt/homebrew/bin:${env.PATH}"
     }
 
     stages {
@@ -21,9 +27,14 @@ pipeline {
                 sh '''
                     echo "PATH: $PATH"
                     echo "DOCKER_HOST: $DOCKER_HOST"
+                    echo "Checking Docker CLI..."
+                    command -v docker || { echo "ERROR: Docker CLI not found"; exit 1; }
                     docker --version
-                    docker info --format '{{.ServerVersion}}'
+                    echo "Checking Docker daemon..."
+                    docker info --format '{{.ServerVersion}}' || { echo "ERROR: Cannot connect to Docker daemon"; exit 1; }
                     docker context ls
+                    echo "Checking Docker socket..."
+                    test -S $DOCKER_HOST || { echo "ERROR: Docker socket not found"; exit 1; }
                 '''
             }
         }
