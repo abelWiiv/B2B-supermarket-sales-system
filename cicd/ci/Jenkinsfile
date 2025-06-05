@@ -1,9 +1,8 @@
 pipeline {
-    // Specify a Docker-enabled agent (optional, use if Jenkins runs in a container)
     agent {
         docker {
-            image 'jenkins/inbound-agent:alpine-jdk17'
-            args '-v /Users/ATolcha/.docker/run/docker.sock:/var/run/docker.sock -v /usr/local/bin/docker:/usr/local/bin/docker'
+            image 'custom-jenkins-agent:alpine-jdk17'  // Use custom image with Docker CLI
+            args '-v /Users/ATolcha/.docker/run/docker.sock:/var/run/docker.sock'
         }
     }
 
@@ -16,8 +15,7 @@ pipeline {
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         SONAR_HOST_URL = 'http://sonarqube:9000'
         MICROSERVICE_DIR = 'UserManagement'
-        // Docker environment variables for macOS
-        DOCKER_HOST = 'unix:///Users/ATolcha/.docker/run/docker.sock'
+        DOCKER_HOST = 'unix:///var/run/docker.sock'  // Use container's socket path
         PATH = "/usr/local/bin:/opt/homebrew/bin:${env.PATH}"
     }
 
@@ -99,10 +97,12 @@ pipeline {
 
     post {
         always {
-            sh '''
-                docker rmi ${IMAGE_NAME}:${DOCKER_TAG} || true
-                docker rmi ${IMAGE_NAME}:latest || true
-            '''
+            node {
+                sh '''
+                    docker rmi ${IMAGE_NAME}:${DOCKER_TAG} || true
+                    docker rmi ${IMAGE_NAME}:latest || true
+                '''
+            }
         }
         success {
             echo 'Pipeline completed successfully!'
