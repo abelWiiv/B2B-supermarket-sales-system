@@ -9,14 +9,11 @@ pipeline {
         IMAGE_NAME = 'abelwiiv/b2b-supermarket-sales-system'
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         SONAR_HOST_URL = 'http://sonarqube:9000'
-//         DEV_SERVER = 'dev-server-host' // Replace with your dev server hostname/IP
-//         DEV_SSH_CREDENTIALS = 'dev-ssh-credentials' // SSH credentials ID for dev server
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // Checkout code from the source control repository
                 checkout scmGit(
                     branches: [[name: '*/main']],
                     userRemoteConfigs: [[
@@ -30,13 +27,11 @@ pipeline {
         stage('Unit Test') {
             steps {
                 script {
-                    // Run Maven unit tests
                     sh 'mvn test'
                 }
             }
             post {
                 always {
-                    // Publish JUnit test results
                     junit '**/target/surefire-reports/*.xml'
                 }
             }
@@ -45,8 +40,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // Run SonarQube analysis with Maven
-                    withSonarQubeEnv('SonarQube') { // 'SonarQube' is the name of the SonarQube server configured in Jenkins
+                    withSonarQubeEnv('SonarQube') {
                         sh "mvn sonar:sonar \
                             -Dsonar.host.url=${SONAR_HOST_URL} \
                             -Dsonar.login=${SONAR_AUTH_TOKEN}"
@@ -58,8 +52,7 @@ pipeline {
         stage('Build') {
             steps {
                 script {
-                    // Run Maven build (clean and package)
-                    sh 'mvn clean package -DskipTests' // Skip tests since they were run in the Unit Test stage
+                    sh 'mvn clean package -DskipTests'
                 }
             }
         }
@@ -67,7 +60,6 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build Docker image
                     sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
                 }
             }
@@ -76,48 +68,19 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 script {
-                    // Login to Docker Hub and push the image
                     withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                         sh "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
                         sh "docker push ${IMAGE_NAME}:${DOCKER_TAG}"
-                        // Tag and push as latest
                         sh "docker tag ${IMAGE_NAME}:${DOCKER_TAG} ${IMAGE_NAME}:latest"
                         sh "docker push ${IMAGE_NAME}:latest"
                     }
                 }
             }
         }
-
-//         stage('Deploy to Dev') {
-//             steps {
-//                 script {
-//                     // Deploy to dev server using SSH
-//                     withCredentials([sshUserPrivateKey(credentialsId: "${DEV_SSH_CREDENTIALS}", keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
-//                         sh """
-//                             ssh -i $SSH_KEY $SSH_USER@$DEV_SERVER << 'EOF'
-//                                 # Pull the latest image
-//                                 docker pull ${IMAGE_NAME}:${DOCKER_TAG}
-//
-//                                 # Stop and remove existing container if it exists
-//                                 docker stop b2b-supermarket || true
-//                                 docker rm b2b-supermarket || true
-//
-//                                 # Run new container
-//                                 docker run -d \
-//                                     --name b2b-supermarket \
-//                                     -p 8080:8080 \
-//                                     ${IMAGE_NAME}:${DOCKER_TAG}
-//                             EOF
-//                         """
-//                     }
-//                 }
-//             }
-//         }
-//     }
+    }
 
     post {
         always {
-            // Clean up Docker images locally to save space
             sh "docker rmi ${IMAGE_NAME}:${DOCKER_TAG} || true"
             sh "docker rmi ${IMAGE_NAME}:latest || true"
         }
