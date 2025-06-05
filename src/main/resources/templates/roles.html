@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Roles</title>
+</head>
+<body>
+<div th:replace="~{layout.html :: layout(title='Roles', content=~{::div})}">
+    <div>
+        <h2>Roles</h2>
+        <form th:action="@{/api/v1/roles}" method="post" class="mb-4">
+            <div class="row g-3">
+                <div class="col">
+                    <input type="text" class="form-control" name="name" placeholder="Role Name" required>
+                </div>
+                <div class="col">
+                    <input type="text" class="form-control" name="description" placeholder="Description">
+                </div>
+                <div class="col">
+                    <select multiple class="form-select" name="privilegeIds">
+                        <option th:each="privilege : ${privileges}" th:value="${privilege.id}" th:text="${privilege.name}"></option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Add Role</button>
+                </div>
+            </div>
+        </form>
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Privileges</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="role : ${roles.content}">
+                <td th:text="${role.name}"></td>
+                <td th:text="${role.description}"></td>
+                <td th:text="${role.privileges}"></td>
+                <td>
+                    <form th:action="@{/api/v1/roles/{id}(id=${role.id})}" method="post" th:method="put" style="display:inline;">
+                        <input type="hidden" name="_method" value="PUT">
+                        <input type="text" name="name" th:value="${role.name}">
+                        <input type="text" name="description" th:value="${role.description}">
+                        <select multiple name="privilegeIds">
+                            <option th:each="privilege : ${privileges}" th:value="${privilege.id}" th:text="${privilege.name}" th:selected="${role.privileges.contains(privilege.name)}"></option>
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                    </form>
+                    <form th:action="@{/api/v1/roles/{id}(id=${role.id})}" method="post" th:method="delete" style="display:inline;">
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <div th:if="${roles.totalPages > 1}">
+            <nav>
+                <ul class="pagination">
+                    <li class="page-item" th:classappend="${roles.first} ? 'disabled'">
+                        <a class="page-link" th:href="@{/roles(page=${roles.number - 1}, size=${roles.size})}">Previous</a>
+                    </li>
+                    <li class="page-item" th:each="i : ${#numbers.sequence(0, roles.totalPages - 1)}" th:classappend="${i == roles.number} ? 'active'">
+                        <a class="page-link" th:href="@{/roles(page=${i}, size=${roles.size})}" th:text="${i + 1}"></a>
+                    </li>
+                    <li class="page-item" th:classappend="${roles.last} ? 'disabled'">
+                        <a class="page-link" th:href="@{/roles(page=${roles.number + 1}, size=${roles.size})}">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+</body>
+</html>
