@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Register</title>
+</head>
+<body>
+<div th:replace="~{layout.html :: layout(title='Register', content=~{::div})}">
+    <div>
+        <h2>Register</h2>
+        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+        <form th:action="@{/api/v1/auth/register}" method="post" class="needs-validation" novalidate>
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" class="form-control" id="username" name="username" required minlength="3" maxlength="50">
+                <div class="invalid-feedback">Username must be between 3 and 50 characters</div>
+            </div>
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" class="form-control" id="email" name="email" required>
+                <div class="invalid-feedback">Valid email is required</div>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                <div class="invalid-feedback">Password must be at least 6 characters</div>
+            </div>
+            <div class="mb-3">
+                <label for="firstName" class="form-label">First Name</label>
+                <input type="text" class="form-control" id="firstName" name="firstName">
+            </div>
+            <div class="mb-3">
+                <label for="lastName" class="form-label">Last Name</label>
+                <input type="text" class="form-control" id="lastName" name="lastName">
+            </div>
+            <button type="submit" class="btn btn-primary">Register</button>
+            <a th:href="@{/login}" class="btn btn-link">Login</a>
+        </form>
+    </div>
+</div>
+<script>
+    (function () {
+        'use strict';
+        var forms = document.querySelectorAll('.needs-validation');
+        Array.prototype.slice.call(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    })();
+</script>
+</body>
+</html>

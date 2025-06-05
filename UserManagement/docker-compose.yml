@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+
+  user-management-db:
+    image: postgres:15
+    container_name: user-management-db
+    environment:
+      POSTGRES_DB: user_management_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - user-management-data:/var/lib/postgresql/data
+#      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./scripts/init_customer_product.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - supermarket-network
+
+  user-management-service:
+    build: .
+    container_name: user-management-service
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: user-management-db
+      DB_PORT: 5432
+      DB_NAME: user_management_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    depends_on:
+      - user-management-db
+    networks:
+      - supermarket-network
+
+volumes:
+  user-management-data:
+
+networks:
+  supermarket-network:
+    driver: bridge
