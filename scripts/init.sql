@@ -1,0 +1,40 @@
+-- Create extension for UUID generation
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Categories table
+CREATE TABLE categories (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Suppliers table
+CREATE TABLE suppliers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    contact_details JSONB NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Products table
+CREATE TABLE products (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    category_id UUID NOT NULL,
+    supplier_id UUID NOT NULL,
+    unit_of_measure VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE RESTRICT
+);
+
+-- Indexes
+CREATE INDEX idx_products_name ON products(name);
+CREATE INDEX idx_products_category_id ON products(category_id);
+CREATE INDEX idx_products_supplier_id ON products(supplier_id);
+CREATE INDEX idx_categories_name ON categories(name);
+CREATE INDEX idx_suppliers_name ON suppliers(name);
