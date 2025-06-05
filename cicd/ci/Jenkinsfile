@@ -10,17 +10,21 @@ pipeline {
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         SONAR_HOST_URL = 'http://sonarqube:9000'
         MICROSERVICE_DIR = 'UserManagement'
-        // Add Docker environment variables for macOS with Docker Desktop
-        PATH = "/usr/local/bin:$PATH" // Adjust if Docker CLI is elsewhere
-        DOCKER_HOST = "unix:///Users/${USER}/.docker/run/docker.sock" // Replace ${USER} with your macOS username
+        // Docker environment variables for macOS with Docker Desktop
+        DOCKER_HOST = 'unix:///Users/ATolcha/.docker/run/docker.sock' // Replace with your macOS username
+        PATH = "/usr/local/bin:/opt/homebrew/bin:${env.PATH}" // Append to existing PATH
     }
 
     stages {
         stage('Debug Docker') {
             steps {
-                sh 'echo $PATH'
-                sh 'docker --version'
-                sh 'docker info'
+                sh '''
+                    echo "PATH: $PATH"
+                    echo "DOCKER_HOST: $DOCKER_HOST"
+                    docker --version
+                    docker info --format '{{.ServerVersion}}'
+                    docker context ls
+                '''
             }
         }
 
@@ -40,9 +44,11 @@ pipeline {
             steps {
                 dir("${MICROSERVICE_DIR}") {
                     withSonarQubeEnv('SonarQube') {
-                        sh "mvn sonar:sonar \
+                        sh '''
+                            mvn sonar:sonar \
                             -Dsonar.host.url=${SONAR_HOST_URL} \
-                            -Dsonar.login=${SONAR_AUTH_TOKEN}"
+                            -Dsonar.login=${SONAR_AUTH_TOKEN}
+                        '''
                     }
                 }
             }
@@ -60,9 +66,7 @@ pipeline {
             steps {
                 dir("${MICROSERVICE_DIR}") {
                     script {
-                        // Use Docker Pipeline Plugin to build the image
                         def dockerImage = docker.build("${IMAGE_NAME}:${DOCKER_TAG}")
-                        // Store the image in a variable for use in the push stage
                         env.DOCKER_IMAGE = dockerImage.id
                     }
                 }
@@ -72,7 +76,6 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 script {
-                    // Use Docker Pipeline Plugin to handle registry authentication and push
                     docker.withRegistry('https://registry.hub.docker.com', "${DOCKER_CREDENTIALS_ID}") {
                         def dockerImage = docker.image("${IMAGE_NAME}:${DOCKER_TAG}")
                         dockerImage.push()
@@ -85,9 +88,10 @@ pipeline {
 
     post {
         always {
-            // Clean up Docker images
-            sh "docker rmi ${IMAGE_NAME}:${DOCKER_TAG} || true"
-            sh "docker rmi ${IMAGE_NAME}:latest || true"
+            sh '''
+                docker rmi ${IMAGE_NAME}:${DOCKER_TAG} || true
+                docker rmi ${IMAGE_NAME}:latest || true
+            '''
         }
         success {
             echo 'Pipeline completed successfully!'
