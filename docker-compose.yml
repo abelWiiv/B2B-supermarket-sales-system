@@ -1,0 +1,249 @@
+
+# version: '3.8'
+services:
+  user-management-db:
+    image: postgres:15
+    container_name: user-management-db
+    environment:
+      POSTGRES_DB: user_management_dbs
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - user-management-data:/var/lib/postgresql/data
+      # - ./usermanagment/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./usermanagment/scripts/init_customer_product.sql:/docker-entrypoint-initdb.d/init.sql
+
+    networks:
+      - supermarket-network
+
+  user-management-service:
+    build:
+      context: ./usermanagment
+      dockerfile: Dockerfile
+    container_name: user-management-service
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: user-management-db
+      DB_PORT: 5432
+      DB_NAME: user_management_db
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION}
+    depends_on:
+      - user-management-db
+    networks:
+      - supermarket-network
+
+  customer-management-db:
+    image: postgres:15
+    container_name: customer-management-db
+    environment:
+      POSTGRES_DB: customer_management_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5434:5432"
+    volumes:
+      - customer-management-data:/var/lib/postgresql/data
+      - ./customermanagment/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - supermarket-network
+
+  customer-management-service:
+    build:
+      context: ./customermanagment
+      dockerfile: Dockerfile
+    container_name: customer-management-service
+    ports:
+      - "8082:8082"
+    environment:
+      DB_HOST: customer-management-db
+      DB_PORT: 5432
+      DB_NAME: customer_management_db
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JASYPT_PASSWORD: ${JASYPT_PASSWORD:-your-secure-jasypt-password}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+    depends_on:
+      - customer-management-db
+      - user-management-service
+    networks:
+      - supermarket-network
+
+  product-management-db:
+    image: postgres:15
+    container_name: product-management-db
+    environment:
+      POSTGRES_DB: product_management_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5435:5432"
+    volumes:
+      - product-management-data:/var/lib/postgresql/data
+      - ./productmanagement/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - supermarket-network
+
+  product-management-service:
+    build:
+      context: ./productmanagement
+      dockerfile: Dockerfile
+    container_name: product-management-service
+    ports:
+      - "8083:8083"
+    environment:
+      DB_HOST: product-management-db
+      DB_PORT: 5432
+      DB_NAME: product_management_db
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+    depends_on:
+      - product-management-db
+      - user-management-service
+    networks:
+      - supermarket-network
+
+  price-list-management-db:
+    image: postgres:15
+    container_name: price-list-management-db
+    environment:
+      POSTGRES_DB: price_list_management_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      
+    ports:
+      - "5436:5432"
+    volumes:
+      - price-list-management-data:/var/lib/postgresql/data
+      - ./pricemanagement/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - supermarket-network
+
+  price-list-management-service:
+    build:
+      context: ./pricemanagement
+      dockerfile: Dockerfile
+    container_name: price-list-management-service
+    ports:
+      - "8084:8084"
+    environment:
+      DB_HOST: price-list-management-db
+      DB_PORT: 5432
+      DB_NAME: price_list_management_db
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      # PRODUCT_MANAGEMENT_URL: http://localhost:8083/product-management
+      PRODUCT_MANAGEMENT_URL: http://product-management-service:8083/product-management
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION}
+
+  
+    depends_on:
+      - price-list-management-db
+      - product-management-service
+      - user-management-service
+    networks:
+      - supermarket-network
+
+  shop-management-db:
+    image: postgres:15
+    container_name: shop-management-db
+    environment:
+      POSTGRES_DB: shop_management_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5437:5432"
+    volumes:
+      - shop-management-data:/var/lib/postgresql/data
+      - ./shopmanagement/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - supermarket-network
+
+  shop-management-service:
+    build:
+      context: ./shopmanagement
+      dockerfile: Dockerfile
+    container_name: shop-management-service
+    ports:
+      - "8085:8085"
+    environment:
+      DB_HOST: shop-management-db
+      DB_PORT: 5432
+      DB_NAME: shop_management_db
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION}
+    depends_on:
+      - shop-management-db
+      - user-management-service
+    networks:
+      - supermarket-network
+
+  sales-management-db:
+    image: postgres:15
+    container_name: sales-management-db
+    environment:
+      POSTGRES_DB: sales_management_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5438:5432"
+    volumes:
+      - sales-management-data:/var/lib/postgresql/data
+      - ./salesmanagement/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - supermarket-network
+
+  sales-management-service:
+    build:
+      context: ./salesmanagement
+      dockerfile: Dockerfile
+    container_name: sales-management-service
+    ports:
+      - "8086:8086"
+    environment:
+      DB_HOST: sales-management-db
+      DB_PORT: 5432
+      DB_NAME: sales_management_db
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      CUSTOMER_MANAGEMENT_URL: http://customer-management-service:8082/customer-management
+      PRODUCT_MANAGEMENT_URL: http://product-management-service:8083/product-management
+      # PRODUCT_MANAGEMENT_URL: http://localhost:8083/product-management
+      SHOP_MANAGEMENT_URL: http://shop-management-service:8085/shop-management
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION}
+    depends_on:
+      - sales-management-db
+      - customer-management-service
+      - product-management-service
+      - shop-management-service
+      - user-management-service
+    networks:
+      - supermarket-network
+
+volumes:
+  user-management-data:
+  customer-management-data:
+  product-management-data:
+  price-list-management-data:
+  shop-management-data:
+  sales-management-data:
+
+networks:
+  supermarket-network:
+    driver: bridge
