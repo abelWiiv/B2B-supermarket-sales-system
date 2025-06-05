@@ -6,9 +6,10 @@ pipeline {
         REPO_URL = 'https://github.com/abelWiiv/B2B-supermarket-sales-system.git'
         SONAR_AUTH_TOKEN = credentials('sonarqube')
         DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'
-        IMAGE_NAME = 'abelwiiv/b2b-supermarket-sales-system'
+        IMAGE_NAME = 'abelwiiv/b2b-supermarket-sales-system-usermanagement' // Adjusted for UserManagement
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         SONAR_HOST_URL = 'http://sonarqube:9000'
+        MICROSERVICE_DIR = 'UserManagement' // Directory for UserManagement
     }
 
     stages {
@@ -26,20 +27,20 @@ pipeline {
 
         stage('Unit Test') {
             steps {
-                script {
+                dir("${MICROSERVICE_DIR}") {
                     sh 'mvn test'
                 }
             }
             post {
                 always {
-                    junit '**/target/surefire-reports/*.xml'
+                    junit allowEmptyResults: true, testResults: "${MICROSERVICE_DIR}/target/surefire-reports/*.xml"
                 }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                script {
+                dir("${MICROSERVICE_DIR}") {
                     withSonarQubeEnv('SonarQube') {
                         sh "mvn sonar:sonar \
                             -Dsonar.host.url=${SONAR_HOST_URL} \
@@ -51,7 +52,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                script {
+                dir("${MICROSERVICE_DIR}") {
                     sh 'mvn clean package -DskipTests'
                 }
             }
@@ -59,7 +60,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                script {
+                dir("${MICROSERVICE_DIR}") {
                     sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
                 }
             }
@@ -67,13 +68,11 @@ pipeline {
 
         stage('Push Docker Image') {
             steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        sh "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
-                        sh "docker push ${IMAGE_NAME}:${DOCKER_TAG}"
-                        sh "docker tag ${IMAGE_NAME}:${DOCKER_TAG} ${IMAGE_NAME}:latest"
-                        sh "docker push ${IMAGE_NAME}:latest"
-                    }
+                withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                    sh "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
+                    sh "docker push ${IMAGE_NAME}:${DOCKER_TAG}"
+                    sh "docker tag ${IMAGE_NAME}:${DOCKER_TAG} ${IMAGE_NAME}:latest"
+                    sh "docker push ${IMAGE_NAME}:latest"
                 }
             }
         }
