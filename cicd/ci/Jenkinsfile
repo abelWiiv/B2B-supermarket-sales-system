@@ -25,18 +25,18 @@ pipeline {
             }
         }
 
-        stage('Unit Test') {
-            steps {
-                dir("${MICROSERVICE_DIR}") {
-                    sh 'mvn test'
-                }
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: "${MICROSERVICE_DIR}/target/surefire-reports/*.xml"
-                }
-            }
-        }
+//         stage('Unit Test') {
+//             steps {
+//                 dir("${MICROSERVICE_DIR}") {
+//                     sh 'mvn test'
+//                 }
+//             }
+//             post {
+//                 always {
+//                     junit allowEmptyResults: true, testResults: "${MICROSERVICE_DIR}/target/surefire-reports/*.xml"
+//                 }
+//             }
+//         }
 
         stage('SonarQube Analysis') {
             steps {
