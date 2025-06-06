@@ -1,5 +1,6 @@
 package com.supermarket.salesmanagement.dto.response;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.supermarket.salesmanagement.model.enums.OrderStatus;
 import lombok.Data;
 
@@ -27,6 +28,8 @@ public class SalesOrderResponse {
         private UUID productId;
         private Integer quantity;
         private BigDecimal unitPrice;
+        // Add custom serializer for totalAmount
+        @JsonSerialize(using = BigDecimalCommaSerializer.class)
         private BigDecimal totalPrice;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
