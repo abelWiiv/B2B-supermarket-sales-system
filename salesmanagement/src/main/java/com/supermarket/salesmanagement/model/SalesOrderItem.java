@@ -1,5 +1,6 @@
 package com.supermarket.salesmanagement.model;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -34,6 +35,7 @@ public class SalesOrderItem {
     private BigDecimal unitPrice;
 
     @Column(name = "total_price", nullable = false)
+    @JsonSerialize(using = BigDecimalCommaSerializer.class)
     private BigDecimal totalPrice;
 
     @CreationTimestamp

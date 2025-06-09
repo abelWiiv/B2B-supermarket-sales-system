@@ -1,5 +1,6 @@
 package com.supermarket.salesmanagement.model;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.*;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
@@ -40,6 +41,7 @@ public class SalesOrder {
     private LocalDateTime updatedAt;
 
     @Column(name = "total_amount", nullable = false)
+    @JsonSerialize(using = BigDecimalCommaSerializer.class)
     private BigDecimal totalAmount; // Added field
 
     @OneToMany(mappedBy = "salesOrder", cascade = CascadeType.ALL, orphanRemoval = true)
