@@ -26,10 +26,14 @@ application:
   security:
     jwt:
       secret-key: ${JWT_SECRET_KEY}
+#      secret-key: zev0iMN5s/ivmYNVO7A2Xo6HD7nvRZom15lfnqoeKgQ=
       expiration: ${JWT_EXPIRATION}
+#      expiration: 86400000
+
   product-management:
      base-url: ${PRODUCT_MANAGEMENT_URL:http://product-management-service:8083/product-management}
 #    base-url: http://localhost:8083/product-management
+#    base-url: http://127.0.0.1:60421/product-management
 logging:
   level:
     org.springframework.security: DEBUG

@@ -1,6 +1,7 @@
 # Build stage
 FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
+COPY .m2/repository /root/.m2/repository
 COPY pom.xml .
 RUN mvn dependency:go-offline
 COPY src ./src

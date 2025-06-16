@@ -16,7 +16,7 @@ public class SalesOrderItemAddRequest {
     @Positive(message = "Quantity must be greater than zero")
     private Integer quantity;
 
-    @NotNull(message = "Unit price is required")
-    @Positive(message = "Unit price must be greater than zero")
-    private BigDecimal unitPrice;
+//    @NotNull(message = "Unit price is required")
+//    @Positive(message = "Unit price must be greater than zero")
+//    private BigDecimal unitPrice;
 }

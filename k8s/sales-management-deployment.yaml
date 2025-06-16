@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sales-management-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sales-management-db
+  template:
+    metadata:
+      labels:
+        app: sales-management-db
+    spec:
+      containers:
+        - name: sales-management-db
+          image: postgres:15
+          env:
+            - name: POSTGRES_DB
+              value: sales_management_db
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_PASSWORD
+          volumeMounts:
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: init-sql
+          configMap:
+            name: sales-management-init-sql
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sales-management-db
+spec:
+  selector:
+    app: sales-management-db
+  ports:
+    - port: 5432
+      targetPort: 5432
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sales-management-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sales-management-service
+  template:
+    metadata:
+      labels:
+        app: sales-management-service
+    spec:
+      containers:
+        - name: sales-management-service
+          image: sales-management-service:1.6
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8086
+          env:
+            - name: DB_HOST
+              value: sales-management-db
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: sales_management_db
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_PASSWORD
+            - name: CUSTOMER_MANAGEMENT_URL
+              value: http://customer-management-service:8082/customer-management
+            - name: PRODUCT_MANAGEMENT_URL
+              value: http://product-management-service:8083/product-management
+            - name: SHOP_MANAGEMENT_URL
+              value: http://shop-management-service:8085/shop-management
+            - name: PRICE_LIST_MANAGEMENT_URL
+              value: http://price-list-management-service:8084/price-list-management
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-credentials
+                  key: JWT_SECRET_KEY
+            - name: JWT_EXPIRATION
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-credentials
+                  key: JWT_EXPIRATION
+            - name: JWT_REFRESH_TOKEN_EXPIRATION
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-credentials
+                  key: JWT_REFRESH_TOKEN_EXPIRATION
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sales-management-service
+spec:
+  selector:
+    app: sales-management-service
+  ports:
+    - port: 8086
+      targetPort: 8086
+  type: ClusterIP
