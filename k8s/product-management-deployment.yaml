@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-management-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: product-management-db
+  template:
+    metadata:
+      labels:
+        app: product-management-db
+    spec:
+      containers:
+      - name: product-management-db
+        image: postgres:15
+        env:
+        - name: POSTGRES_DB
+          value: product_management_db
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: DB_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: DB_PASSWORD
+        volumeMounts:
+        - name: init-sql
+          mountPath: /docker-entrypoint-initdb.d
+      volumes:
+      - name: init-sql
+        configMap:
+          name: product-management-init-sql
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-management-db
+spec:
+  selector:
+    app: product-management-db
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-management-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: product-management-service
+  template:
+    metadata:
+      labels:
+        app: product-management-service
+    spec:
+      containers:
+      - name: product-management-service
+        image: product-management-service:1.0
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8083
+        env:
+        - name: DB_HOST
+          value: product-management-db
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: product_management_db
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: DB_PASSWORD
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: jwt-credentials
+              key: JWT_SECRET_KEY
+        - name: JWT_EXPIRATION
+          valueFrom:
+            secretKeyRef:
+              name: jwt-credentials
+              key: JWT_EXPIRATION
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-management-service
+spec:
+  selector:
+    app: product-management-service
+  ports:
+  - port: 8083
+    targetPort: 8083
+  type: ClusterIP

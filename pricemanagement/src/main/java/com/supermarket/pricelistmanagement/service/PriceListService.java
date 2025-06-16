@@ -23,6 +23,14 @@ public class PriceListService {
     private final PriceListRepository priceListRepository;
     private final ProductFeignClient productFeignClient;
 
+
+    public PriceListResponse getPriceByProductId(UUID productId) {
+        validateProductId(productId);
+        PriceList priceList = priceListRepository.findByProductId(productId)
+                .orElseThrow(() -> new CustomException("Price list for product ID " + productId + " not found"));
+        return mapToPriceListResponse(priceList);
+    }
+
     public PriceListResponse createPriceList(PriceListCreateRequest request) {
         // Validate product ID
         validateProductId(request.getProductId());

@@ -33,23 +33,29 @@ application:
   security:
     jwt:
       secret-key: ${JWT_SECRET_KEY}
+#      secret-key: zev0iMN5s/ivmYNVO7A2Xo6HD7nvRZom15lfnqoeKgQ=
+
   customer:
     service:
       url: ${CUSTOMER_MANAGEMENT_URL}
 #        url: ${CUSTOMER_MANAGEMENT_URL:http://customer-management-service:8082/customer-management}
+#      url: http://127.0.0.1:64476/customer-management
   product:
     service:
       url: ${PRODUCT_MANAGEMENT_URL}
 #      url: ${PRODUCT_MANAGEMENT_URL:http://product-management-service:8083/product-management}
+#       url: http://127.0.0.1:60421/product-management
 
   shop:
     service:
       url: ${SHOP_MANAGEMENT_URL}
 #     url: ${SHOP_MANAGEMENT_URL:http://shop-management-service:8085/shop-management}
+#      url: http://127.0.0.1:60431/shop-management
 
-#  price:
-#    service:
+  price:
+    service:
 #      url: http://localhost:8084/price-list-management
+       url: ${PRICE_LIST_MANAGEMENT_URL}
 
 #rabbitmq:
 #  exchange:

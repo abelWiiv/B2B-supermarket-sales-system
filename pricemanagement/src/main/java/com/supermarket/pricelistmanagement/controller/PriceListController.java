@@ -28,6 +28,13 @@ public class PriceListController {
         return ResponseEntity.ok(priceListService.createPriceList(request));
     }
 
+    @GetMapping("/{productId}/prices")
+    @PreAuthorize("hasAuthority('READ_PRICE_LIST')")
+    public ResponseEntity<PriceListResponse> getPriceByProductId(@PathVariable UUID productId) {
+        PriceListResponse priceList = priceListService.getPriceByProductId(productId);
+        return ResponseEntity.ok(priceList);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('READ_PRICE_LIST')")
     public ResponseEntity<PriceListResponse> getPriceListById(@PathVariable UUID id) {

@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customer-management-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: customer-management-db
+  template:
+    metadata:
+      labels:
+        app: customer-management-db
+    spec:
+      containers:
+      - name: customer-management-db
+        image: postgres:15
+        env:
+        - name: POSTGRES_DB
+          value: customer_management_db
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: DB_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: DB_PASSWORD
+        volumeMounts:
+        - name: init-sql
+          mountPath: /docker-entrypoint-initdb.d
+      volumes:
+      - name: init-sql
+        configMap:
+          name: customer-management-init-sql
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: customer-management-db
+spec:
+  selector:
+    app: customer-management-db
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customer-management-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: customer-management-service
+  template:
+    metadata:
+      labels:
+        app: customer-management-service
+    spec:
+      containers:
+      - name: customer-management-service
+        image: customer-management-service:1.0
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8082
+        env:
+        - name: DB_HOST
+          value: customer-management-db
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: customer_management_db
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: DB_PASSWORD
+        - name: JASYPT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-credentials
+              key: JASYPT_PASSWORD
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: jwt-credentials
+              key: JWT_SECRET_KEY
+        - name: JWT_EXPIRATION
+          valueFrom:
+            secretKeyRef:
+              name: jwt-credentials
+              key: JWT_EXPIRATION
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: customer-management-service
+spec:
+  selector:
+    app: customer-management-service
+  ports:
+  - port: 8082
+    targetPort: 8082
+  type: ClusterIP

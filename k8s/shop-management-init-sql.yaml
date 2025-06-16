@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shop-management-init-sql
+data:
+  init.sql: |
+    ---- Create extension for UUID generation
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+    -- Shops table
+    CREATE TABLE shops (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        name VARCHAR(100) NOT NULL UNIQUE,
+        location VARCHAR(255) NOT NULL,
+        manager_contact JSONB NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Indexes
+    CREATE INDEX idx_shops_name ON shops(name);
+    CREATE INDEX idx_shops_location ON shops(location);

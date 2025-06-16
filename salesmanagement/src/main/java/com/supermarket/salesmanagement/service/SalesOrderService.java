@@ -1,5 +1,6 @@
 package com.supermarket.salesmanagement.service;
 
+import com.supermarket.common.dto.PriceListResponse;
 import com.supermarket.salesmanagement.dto.request.SalesOrderCreateRequest;
 import com.supermarket.salesmanagement.dto.request.SalesOrderItemAddRequest;
 import com.supermarket.salesmanagement.dto.request.SalesOrderUpdateRequest;
@@ -16,6 +17,7 @@ import com.supermarket.salesmanagement.repository.InvoiceRepository;
 import com.supermarket.salesmanagement.repository.SalesOrderItemRepository;
 import com.supermarket.salesmanagement.repository.SalesOrderRepository;
 import com.supermarket.salesmanagement.service.client.CustomerClient;
+import com.supermarket.salesmanagement.service.client.PriceListClient;
 import com.supermarket.salesmanagement.service.client.ProductClient;
 import com.supermarket.salesmanagement.service.client.ShopClient;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,7 @@ public class SalesOrderService {
     private final CustomerClient customerClient;
     private final ProductClient productClient;
     private final ShopClient shopClient;
+    private final PriceListClient priceListClient;
     private final OrderStatusPublisher orderStatusPublisher;
 
     @Transactional
@@ -47,7 +50,7 @@ public class SalesOrderService {
         validateCreateRequest(request);
 
         // Validate customer and shop
-       customerClient.getCustomerById(request.getCustomerId());
+        customerClient.getCustomerById(request.getCustomerId());
         shopClient.getShopById(request.getShopId());
 
         SalesOrder salesOrder = SalesOrder.builder()
@@ -62,24 +65,30 @@ public class SalesOrderService {
         // Process items if provided
         if (request.getItems() != null && !request.getItems().isEmpty()) {
             List<SalesOrderItem> items = request.getItems().stream()
-                    .peek(item -> {
+                    .map(item -> {
                         productClient.getProductById(item.getProductId());
-                        validateItem(item.getQuantity(), item.getUnitPrice());
+                        // Fetch price from PriceListService
+                        PriceListResponse priceList = priceListClient.getPriceByProductId(item.getProductId());
+                        System.out.println("CreateSalesOrder - PriceListResponse for product " + item.getProductId() + ": " + priceList);
+                        if (priceList == null || priceList.getPrice() == null) {
+                            throw new CustomException("Price for product ID " + item.getProductId() + " not found");
+                        }
+                        BigDecimal fetchedPrice = priceList.getPrice();
+                        validateItem(item.getQuantity(), fetchedPrice);
+                        return SalesOrderItem.builder()
+                                .salesOrder(salesOrder)
+                                .productId(item.getProductId())
+                                .quantity(item.getQuantity())
+                                .unitPrice(fetchedPrice)
+                                .totalPrice(fetchedPrice.multiply(BigDecimal.valueOf(item.getQuantity())))
+                                .build();
                     })
-                    .map(item -> SalesOrderItem.builder()
-                            .salesOrder(salesOrder)
-                            .productId(item.getProductId())
-                            .quantity(item.getQuantity())
-                            .unitPrice(item.getUnitPrice())
-                            .totalPrice(item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
-                            .build())
                     .collect(Collectors.toList());
             salesOrder.setItems(items);
             salesOrder.calculateTotalAmount();
         }
 
         SalesOrder savedOrder = salesOrderRepository.save(salesOrder);
-//        orderStatusPublisher.publishOrderStatusEvent(new OrderStatusEvent(savedOrder.getId(), savedOrder.getStatus()));
         return mapToSalesOrderResponse(savedOrder);
     }
 
@@ -114,17 +123,24 @@ public class SalesOrderService {
 
             if (!request.getItems().isEmpty()) {
                 List<SalesOrderItem> newItems = request.getItems().stream()
-                        .peek(item -> {
+                        .map(item -> {
                             productClient.getProductById(item.getProductId());
-                            validateItem(item.getQuantity(), item.getUnitPrice());
+                            // Fetch price from PriceListService
+                            PriceListResponse priceList = priceListClient.getPriceByProductId(item.getProductId());
+                            System.out.println("UpdateSalesOrder - PriceListResponse for product " + item.getProductId() + ": " + priceList);
+                            if (priceList == null || priceList.getPrice() == null) {
+                                throw new CustomException("Price for product ID " + item.getProductId() + " not found");
+                            }
+                            BigDecimal fetchedPrice = priceList.getPrice();
+                            validateItem(item.getQuantity(), fetchedPrice);
+                            return SalesOrderItem.builder()
+                                    .salesOrder(salesOrder)
+                                    .productId(item.getProductId())
+                                    .quantity(item.getQuantity())
+                                    .unitPrice(fetchedPrice)
+                                    .totalPrice(fetchedPrice.multiply(BigDecimal.valueOf(item.getQuantity())))
+                                    .build();
                         })
-                        .map(item -> SalesOrderItem.builder()
-                                .salesOrder(salesOrder)
-                                .productId(item.getProductId())
-                                .quantity(item.getQuantity())
-                                .unitPrice(item.getUnitPrice())
-                                .totalPrice(item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
-                                .build())
                         .collect(Collectors.toList());
                 salesOrder.getItems().addAll(newItems);
             }
@@ -153,54 +169,59 @@ public class SalesOrderService {
         }
 
         // Validate item data
-        productClient.getProductById(request.getProductId());
-        validateItem(request.getQuantity(), request.getUnitPrice());
+        if (request.getProductId() == null || request.getQuantity() == null) {
+            throw new CustomException("Invalid item data: product ID and quantity are required");
+        }
 
-        //check if an item with the same productId Exist
+        productClient.getProductById(request.getProductId());
+        // Fetch price from PriceListService
+        PriceListResponse priceList = priceListClient.getPriceByProductId(request.getProductId());
+        System.out.println("AddSalesOrderItem - PriceListResponse for product " + request.getProductId() + ": " + priceList);
+        if (priceList == null || priceList.getPrice() == null) {
+            throw new CustomException("Price for product ID " + request.getProductId() + " not found");
+        }
+        BigDecimal fetchedPrice = priceList.getPrice();
+        validateItem(request.getQuantity(), fetchedPrice); // Validate quantity and unit price
+
+        // Check if an item with the same productId exists
         SalesOrderItem existingItem = salesOrder.getItems().stream()
                 .filter(item -> item.getProductId().equals(request.getProductId()))
                 .findFirst()
                 .orElse(null);
 
-
         SalesOrderItem newItem;
-        if(existingItem != null){
-
-            //merge with existing item
+        if (existingItem != null) {
+            // Merge with existing item
             int newQuantity = existingItem.getQuantity() + request.getQuantity();
-
-            //calculate weighted average unit price
+            // Calculate weighted average unit price
             BigDecimal existingTotal = existingItem.getUnitPrice().multiply(BigDecimal.valueOf(existingItem.getQuantity()));
-            BigDecimal newTotal = request.getUnitPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
+            BigDecimal newTotal = fetchedPrice.multiply(BigDecimal.valueOf(request.getQuantity()));
             BigDecimal totalPrice = existingTotal.add(newTotal);
-            BigDecimal weightedUnitPrice = totalPrice.divide(BigDecimal.valueOf(newQuantity), 2 , BigDecimal.ROUND_HALF_UP);
+            BigDecimal weightedUnitPrice = totalPrice.divide(BigDecimal.valueOf(newQuantity), 2, BigDecimal.ROUND_HALF_UP);
 
-            //update existing item
+            // Update existing item
             existingItem.setQuantity(newQuantity);
             existingItem.setUnitPrice(weightedUnitPrice);
             existingItem.setTotalPrice(totalPrice);
             salesOrderItemRepository.save(existingItem);
             newItem = existingItem;
-
-        }else {
-
+        } else {
             // Create new sales order item
             newItem = SalesOrderItem.builder()
                     .salesOrder(salesOrder)
                     .productId(request.getProductId())
                     .quantity(request.getQuantity())
-                    .unitPrice(request.getUnitPrice())
-                    .totalPrice(request.getUnitPrice().multiply(BigDecimal.valueOf(request.getQuantity())))
+                    .unitPrice(fetchedPrice)
+                    .totalPrice(fetchedPrice.multiply(BigDecimal.valueOf(request.getQuantity())))
                     .build();
 
             // Add item to sales order and save it
             salesOrder.getItems().add(newItem);
             salesOrderItemRepository.save(newItem);
-
         }
         // Recalculate total amount and save the sales order
         salesOrder.calculateTotalAmount();
-        SalesOrder updatedOrder = salesOrderRepository.save(salesOrder); // Save the updated sales order
+        SalesOrder updatedOrder = salesOrderRepository.save(salesOrder);
 
         orderStatusPublisher.publishOrderStatusEvent(new OrderStatusEvent(updatedOrder.getId(), updatedOrder.getStatus()));
         return mapToSalesOrderResponse(updatedOrder);
@@ -236,8 +257,6 @@ public class SalesOrderService {
         orderStatusPublisher.publishOrderStatusEvent(new OrderStatusEvent(updatedOrder.getId(), updatedOrder.getStatus()));
         return mapToSalesOrderResponse(updatedOrder);
     }
-
-
 
     @Transactional
     public SalesOrderResponse confirmOrderAfterPayment(UUID orderId) {
@@ -297,8 +316,8 @@ public class SalesOrderService {
         }
         if (request.getItems() != null) {
             request.getItems().forEach(item -> {
-                if (item.getProductId() == null || item.getQuantity() == null || item.getUnitPrice() == null) {
-                    throw new CustomException("Invalid item data: product ID, quantity, and unit price are required");
+                if (item.getProductId() == null || item.getQuantity() == null) {
+                    throw new CustomException("Invalid item data: product ID and quantity are required");
                 }
             });
         }
@@ -307,19 +326,16 @@ public class SalesOrderService {
     private void validateUpdateRequest(SalesOrderUpdateRequest request) {
         if (request.getItems() != null) {
             request.getItems().forEach(item -> {
-                if (item.getProductId() == null || item.getQuantity() == null || item.getUnitPrice() == null) {
-                    throw new CustomException("Invalid item data: product ID, quantity, and unit price are required");
+                if (item.getProductId() == null || item.getQuantity() == null) {
+                    throw new CustomException("Invalid item data: product ID and quantity are required");
                 }
             });
         }
     }
 
     private void validateItem(Integer quantity, BigDecimal unitPrice) {
-        if (quantity <= 0) {
+        if (quantity == null || quantity <= 0) {
             throw new CustomException("Quantity must be greater than zero");
-        }
-        if (unitPrice.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new CustomException("Unit price must be greater than zero");
         }
     }
 
@@ -358,4 +374,3 @@ public class SalesOrderService {
         return response;
     }
 }
-
