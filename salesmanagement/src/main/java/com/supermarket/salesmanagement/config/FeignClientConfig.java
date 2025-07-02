@@ -17,7 +17,7 @@ public class FeignClientConfig {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication != null && authentication.getCredentials() != null) {
                 String jwtToken = (String) authentication.getCredentials();
-                System.out.println("Adding JWT token to Feign request: {}" + jwtToken); // Add logging
+//                System.out.println("Adding JWT token to Feign request: {}" + jwtToken); // Add logging
                 requestTemplate.header("Authorization", "Bearer " + jwtToken);
             } else {
                 System.out.println("No valid authentication or credentials found in SecurityContextHolder");

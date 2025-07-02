@@ -5,9 +5,15 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:customer_management_db}
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
+#    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:customer_management_db}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:53645}/${DB_NAME:customer_management_db}
+#    url: ${DB_URL:jdbc:postgresql://localhost:5432/loyalty_management_db}
+
+#    username: ${DB_USER}
+#    password: ${DB_PASSWORD}
+
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:12345678}
 
     driver-class-name: org.postgresql.Driver
   jpa:
@@ -23,19 +29,25 @@ spring:
     password: 12345678
 
 
-#  jasypt:
-#    encryptor:
+  jasypt:
+    encryptor:
 #      password: ${JASYPT_PASSWORD:secret}
-#      password: myLocalPassword123
+      password: myLocalPassword123
 #      password: ${JASYPT_PASSWORD}
-#      algorithm: PBEWithMD5AndDES
-#      iv-generator-classname: org.jasypt.iv.NoIvGenerator
+      algorithm: PBEWithMD5AndDES
+      iv-generator-classname: org.jasypt.iv.NoIvGenerator
 
 application:
   security:
     jwt:
-      secret-key: ${JWT_SECRET_KEY}
-      expiration: ${JWT_EXPIRATION} # 24 hours in milliseconds
+#      secret-key: ${JWT_SECRET_KEY}
+#      expiration: ${JWT_EXPIRATION} # 24 hours in milliseconds
+      secret-key: zev0iMN5s/ivmYNVO7A2Xo6HD7nvRZom15lfnqoeKgQ=
+#      expiration: 86400000
+        #      secret-key: ${JWT_SECRET_KEY}
+        #      expiration: ${JWT_EXPIRATION} # 24 hours in milliseconds
+
+
 
 
 

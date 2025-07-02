@@ -1,0 +1,42 @@
+server:
+  port: 8087
+  servlet:
+    context-path: /loyalty-management
+
+
+spring:
+  application:
+    name: loyalty-management-service
+  datasource:
+#    url: ${DB_URL:jdbc:postgresql://localhost:5432/loyalty_management_db}
+    url: ${DB_URL:jdbc:postgresql://localhost:55666/loyalty_management_db}
+#    username: ${DB_USERNAME}
+#    password: ${DB_PASSWORD}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:12345678}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+loyalty:
+  points:
+    award-rate: ${POINTS_AWARD_RATE:0.01} # 1 point per $100
+    redemption-rate: ${POINTS_REDEMPTION_RATE:1.0} # 1 point = $1
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+
+application:
+  security:
+    jwt:
+      secret-key: zev0iMN5s/ivmYNVO7A2Xo6HD7nvRZom15lfnqoeKgQ=
+      expiration: 86400000
+#            secret-key: ${JWT_SECRET_KEY}
+#            expiration: ${JWT_EXPIRATION} # 24 hours in milliseconds
+      refresh-token:
+        expiration: 604800000

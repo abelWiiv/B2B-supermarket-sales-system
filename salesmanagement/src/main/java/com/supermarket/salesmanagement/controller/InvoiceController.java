@@ -22,8 +22,9 @@ public class InvoiceController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('CREATE_INVOICE')")
-    public ResponseEntity<InvoiceResponse> createInvoice(@Valid @RequestBody InvoiceCreateRequest request) {
-        return ResponseEntity.ok(invoiceService.createInvoice(request));
+    public ResponseEntity<InvoiceResponse> createInvoice(@Valid @RequestBody InvoiceCreateRequest request,
+                                                         @RequestParam(value = "pointsToRedeem", required = false) Integer pointsToRedeem) {
+        return ResponseEntity.ok(invoiceService.createInvoice(request, pointsToRedeem));
     }
 
     @GetMapping("/{id}")

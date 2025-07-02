@@ -1,6 +1,7 @@
 package com.supermarket.salesmanagement.service;
 
 import com.supermarket.common.dto.PriceListResponse;
+import com.supermarket.salesmanagement.dto.LoyaltyAccount;
 import com.supermarket.salesmanagement.dto.request.SalesOrderCreateRequest;
 import com.supermarket.salesmanagement.dto.request.SalesOrderItemAddRequest;
 import com.supermarket.salesmanagement.dto.request.SalesOrderUpdateRequest;
@@ -16,11 +17,10 @@ import com.supermarket.salesmanagement.model.enums.PaymentStatus;
 import com.supermarket.salesmanagement.repository.InvoiceRepository;
 import com.supermarket.salesmanagement.repository.SalesOrderItemRepository;
 import com.supermarket.salesmanagement.repository.SalesOrderRepository;
-import com.supermarket.salesmanagement.service.client.CustomerClient;
-import com.supermarket.salesmanagement.service.client.PriceListClient;
-import com.supermarket.salesmanagement.service.client.ProductClient;
-import com.supermarket.salesmanagement.service.client.ShopClient;
+import com.supermarket.salesmanagement.service.client.*;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -44,6 +44,13 @@ public class SalesOrderService {
     private final ShopClient shopClient;
     private final PriceListClient priceListClient;
     private final OrderStatusPublisher orderStatusPublisher;
+    private final LoyaltyClient loyaltyClient;
+
+    @Value("${application.loyalty.points.award-rate}")
+    private Double pointsAwardRate;
+
+    @Value("${loyalty.points.redemption-rate:1.0}")
+    private Double pointsRedemptionRate;
 
     @Transactional
     public SalesOrderResponse createSalesOrder(SalesOrderCreateRequest request) {
@@ -275,6 +282,22 @@ public class SalesOrderService {
         }
 
         salesOrder.setStatus(OrderStatus.CONFIRMED);
+
+        // Calculate and award points
+        BigDecimal totalBeforeDiscount = salesOrder.getItems().stream()
+                .map(item -> item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        Integer points = totalBeforeDiscount.multiply(BigDecimal.valueOf(pointsAwardRate))
+                .intValue();
+        salesOrder.setPointsAwarded(points);
+
+        // Call Loyalty Service to award points
+        try {
+            loyaltyClient.awardPoints(salesOrder.getCustomerId(), points);
+        } catch (FeignException e) {
+            throw new CustomException("Failed to award points: " + e.getMessage());
+        }
+
         salesOrder.calculateTotalAmount();
         SalesOrder confirmedOrder = salesOrderRepository.save(salesOrder);
 
@@ -358,6 +381,10 @@ public class SalesOrderService {
         response.setCreatedAt(salesOrder.getCreatedAt());
         response.setUpdatedAt(salesOrder.getUpdatedAt());
         response.setTotalAmount(salesOrder.getTotalAmount());
+        // Only include pointsAwarded if order is confirmed
+        if (salesOrder.getStatus() == OrderStatus.CONFIRMED) {
+            response.setPointsAwarded(salesOrder.getPointsAwarded());
+        }
         response.setItems(salesOrder.getItems().stream()
                 .map(item -> {
                     SalesOrderResponse.OrderItemResponse itemResponse = new SalesOrderResponse.OrderItemResponse();

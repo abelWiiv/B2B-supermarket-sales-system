@@ -1,5 +1,6 @@
 package com.supermarket.salesmanagement.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.supermarket.salesmanagement.model.enums.OrderStatus;
 import lombok.Data;
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Data
+@JsonInclude(JsonInclude.Include.NON_NULL) // This excludes null fields from JSON
 public class SalesOrderResponse {
     private UUID id;
     private UUID customerId;
@@ -20,6 +22,7 @@ public class SalesOrderResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private BigDecimal totalAmount; // Added field
+    private Integer pointsAwarded; // New field for loyalty points awarded
     private List<OrderItemResponse> items;
 
     @Data
