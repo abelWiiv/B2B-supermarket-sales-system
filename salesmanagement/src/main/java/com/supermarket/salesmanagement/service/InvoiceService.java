@@ -11,12 +11,17 @@ import com.supermarket.salesmanagement.model.enums.PaymentStatus;
 import com.supermarket.salesmanagement.model.enums.OrderStatus;
 import com.supermarket.salesmanagement.repository.InvoiceRepository;
 import com.supermarket.salesmanagement.repository.SalesOrderRepository;
+import com.supermarket.salesmanagement.service.client.LoyaltyClient;
+import com.supermarket.salesmanagement.dto.LoyaltyAccount;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Service
@@ -25,9 +30,13 @@ public class InvoiceService {
     private final InvoiceRepository invoiceRepository;
     private final SalesOrderRepository salesOrderRepository;
     private final SalesOrderService salesOrderService;
+    private final LoyaltyClient loyaltyClient;
+
+    @Value("${loyalty.points.redemption-rate:1.0}")
+    private Double pointsRedemptionRate;
 
     @Transactional
-    public InvoiceResponse createInvoice(InvoiceCreateRequest request) {
+    public InvoiceResponse createInvoice(InvoiceCreateRequest request, Integer pointsToRedeem) {
         SalesOrder salesOrder = salesOrderRepository.findById(request.getSalesOrderId())
                 .orElseThrow(() -> new CustomException("Sales order with ID " + request.getSalesOrderId() + " not found"));
 
@@ -39,6 +48,30 @@ public class InvoiceService {
             throw new CustomException("Invoice for sales order ID " + request.getSalesOrderId() + " already exists");
         }
 
+        // Handle point redemption
+        if (pointsToRedeem != null && pointsToRedeem > 0) {
+            try {
+                LoyaltyAccount account = loyaltyClient.getLoyaltyById(salesOrder.getCustomerId());
+                if (account == null || account.getPointsBalance() < pointsToRedeem) {
+                    throw new CustomException("Insufficient points for redemption");
+                }
+
+                Double discount = pointsToRedeem * pointsRedemptionRate;
+                salesOrder.setPointsRedeemed(pointsToRedeem);
+                salesOrder.setRedemptionDiscount(discount);
+
+                loyaltyClient.redeemPoints(salesOrder.getCustomerId(), pointsToRedeem);
+
+                salesOrder.setTotalAmount(salesOrder.getTotalAmount().subtract(BigDecimal.valueOf(discount)));
+                if (salesOrder.getTotalAmount().compareTo(BigDecimal.ZERO) < 0) {
+                    throw new CustomException("Redemption discount cannot exceed order total");
+                }
+                salesOrderRepository.save(salesOrder);
+            } catch (FeignException e) {
+                throw new CustomException("Failed to communicate with loyalty service: " + e.getMessage());
+            }
+        }
+
         Invoice invoice = Invoice.builder()
                 .salesOrderId(request.getSalesOrderId())
                 .invoiceDate(request.getInvoiceDate())
@@ -47,12 +80,10 @@ public class InvoiceService {
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
-
         // Update sales order status to PENDING
         SalesOrderUpdateRequest updateRequest = new SalesOrderUpdateRequest();
         updateRequest.setStatus(OrderStatus.PENDING);
         salesOrderService.updateSalesOrder(request.getSalesOrderId(), updateRequest);
-
 
         return mapToInvoiceResponse(savedInvoice);
     }
@@ -107,7 +138,26 @@ public class InvoiceService {
         response.setPaymentStatus(invoice.getPaymentStatus());
         response.setCreatedAt(invoice.getCreatedAt());
         response.setUpdatedAt(invoice.getUpdatedAt());
+
+        // Fetch the SalesOrder to get the total amount
+        SalesOrder salesOrder = salesOrderRepository.findById(invoice.getSalesOrderId())
+                .orElseThrow(() -> new CustomException("Sales order with ID " + invoice.getSalesOrderId() + " not found"));
+        response.setTotalAmount(salesOrder.getTotalAmount());
+
+
+//        // Calculate and set the redemption amount
+//        if (salesOrder.getRedemptionDiscount() != null) {
+//            response.setRedemptionAmount(BigDecimal.valueOf(salesOrder.getRedemptionDiscount()));
+//        } else {
+//            response.setRedemptionAmount(BigDecimal.ZERO);
+//        }
+
+        // Only set redemptionAmount if there was a redemption
+        if (salesOrder.getRedemptionDiscount() != null && salesOrder.getRedemptionDiscount() > 0) {
+            response.setRedemptionAmount(BigDecimal.valueOf(salesOrder.getRedemptionDiscount()));
+        } // Else, it remains null and is excluded from JSON
+
+
         return response;
     }
 }
-

@@ -4,11 +4,12 @@ server:
     context-path: /shop-management
 spring:
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:shop_management_db}
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
-#    username: ${DB_USER:postgres}
-#    password: ${DB_PASSWORD:12345678}
+#    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:shop_management_db}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:60679}/${DB_NAME:shop_management_db}
+#    username: ${DB_USER}
+#    password: ${DB_PASSWORD}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:12345678}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -24,9 +25,13 @@ spring:
           issuer-uri: http://localhost:8081/user-management
 application:
   security:
-    jwt:
-      secret-key: zev0iMN5s/ivmYNVO7A2Xo6HD7nvRZom15lfnqoeKgQ=
-      expiration: 86400000 # 24 hours in milliseconds
+#    jwt:
+#      secret-key: ${JWT_SECRET_KEY}
+#      expiration: ${JWT_EXPIRATION} # 24 hours in milliseconds
+
+      jwt:
+        secret-key: zev0iMN5s/ivmYNVO7A2Xo6HD7nvRZom15lfnqoeKgQ=
+        expiration: 86400000
 logging:
   level:
     org.springframework.security: DEBUG

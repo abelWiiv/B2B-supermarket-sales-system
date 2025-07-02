@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  loyalty-management-db:
+    image: postgres:15
+    container_name: loyalty-management-db
+    environment:
+      POSTGRES_DB: loyalty_management_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5437:5432"
+    volumes:
+      - loyalty-management-data:/var/lib/postgresql/data
+    networks:
+      - supermarket-network
+  loyalty-management-service:
+    build: .
+    container_name: loyalty-management-service
+    ports:
+      - "8087:8087"
+    environment:
+      DB_HOST: loyalty-management-db
+      DB_PORT: 5432
+      DB_NAME: loyalty_management_db
+      DB_USER: postgres
+      DB_PASSWORD: 12345678
+    depends_on:
+      - loyalty-management-db
+    networks:
+      - supermarket-network
+volumes:
+  loyalty-management-data:
+networks:
+  supermarket-network:
+    driver: bridge

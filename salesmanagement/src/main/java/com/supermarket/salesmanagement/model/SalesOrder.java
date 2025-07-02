@@ -42,6 +42,13 @@ public class SalesOrder {
     @Column(name = "total_amount", nullable = false)
     private BigDecimal totalAmount; // Added field
 
+
+    // Ensure setter exists
+    private Integer pointsAwarded;
+    private Integer pointsRedeemed;
+    private Double redemptionDiscount;
+
+
     @OneToMany(mappedBy = "salesOrder", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SalesOrderItem> items = new ArrayList<>();
 
