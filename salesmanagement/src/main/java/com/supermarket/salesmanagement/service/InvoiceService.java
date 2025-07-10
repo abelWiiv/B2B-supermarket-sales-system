@@ -1,5 +1,6 @@
 package com.supermarket.salesmanagement.service;
 
+import com.supermarket.salesmanagement.dto.CustomerDto;
 import com.supermarket.salesmanagement.dto.request.InvoiceCreateRequest;
 import com.supermarket.salesmanagement.dto.request.InvoiceUpdateRequest;
 import com.supermarket.salesmanagement.dto.request.SalesOrderUpdateRequest;
@@ -48,21 +49,41 @@ public class InvoiceService {
             throw new CustomException("Invoice for sales order ID " + request.getSalesOrderId() + " already exists");
         }
 
+        // Store original total for points calculation
+        BigDecimal totalBeforeDiscount = salesOrder.getTotalAmount();
+        BigDecimal redemptionAmount = BigDecimal.ZERO;
+        int awardedPoints = 0;
+
         // Handle point redemption
         if (pointsToRedeem != null && pointsToRedeem > 0) {
             try {
-                LoyaltyAccount account = loyaltyClient.getLoyaltyById(salesOrder.getCustomerId());
-                if (account == null || account.getPointsBalance() < pointsToRedeem) {
-                    throw new CustomException("Insufficient points for redemption");
+                LoyaltyAccount account = loyaltyClient.getAccount(salesOrder.getCustomerId());
+                if (account == null) {
+                    throw new CustomException("Loyalty account not found for customer ID " + salesOrder.getCustomerId());
                 }
 
-                Double discount = pointsToRedeem * pointsRedemptionRate;
-                salesOrder.setPointsRedeemed(pointsToRedeem);
-                salesOrder.setRedemptionDiscount(discount);
+                // Adjust points based on user type redemption multiplier
+                double redeemMultiplier = account.getRedeemMultiplier();
+                int adjustedPoints = (int) (pointsToRedeem * redeemMultiplier);
+                if (account.getPointsBalance() < adjustedPoints) {
+                    throw new CustomException("Insufficient points for redemption. Available: " + account.getPointsBalance() + ", Required: " + adjustedPoints);
+                }
 
+//                // Calculate discount
+//                BigDecimal discount = BigDecimal.valueOf(pointsToRedeem * pointsRedemptionRate);
+//                salesOrder.setPointsRedeemed(pointsToRedeem);
+//                salesOrder.setRedemptionDiscount(discount.doubleValue());
+
+                // Calculate redemption amount
+                redemptionAmount = BigDecimal.valueOf(pointsToRedeem * pointsRedemptionRate);
+                salesOrder.setPointsRedeemed(pointsToRedeem);
+                salesOrder.setRedemptionDiscount(redemptionAmount.doubleValue());
+
+                // Redeem points through loyalty service
                 loyaltyClient.redeemPoints(salesOrder.getCustomerId(), pointsToRedeem);
 
-                salesOrder.setTotalAmount(salesOrder.getTotalAmount().subtract(BigDecimal.valueOf(discount)));
+                // Update total amount
+                salesOrder.setTotalAmount(salesOrder.getTotalAmount().subtract(redemptionAmount));
                 if (salesOrder.getTotalAmount().compareTo(BigDecimal.ZERO) < 0) {
                     throw new CustomException("Redemption discount cannot exceed order total");
                 }
@@ -71,11 +92,13 @@ public class InvoiceService {
                 throw new CustomException("Failed to communicate with loyalty service: " + e.getMessage());
             }
         }
-
+       // Create invoice
         Invoice invoice = Invoice.builder()
                 .salesOrderId(request.getSalesOrderId())
                 .invoiceDate(request.getInvoiceDate())
                 .paymentStatus(PaymentStatus.UNPAID)
+                .redemptionAmount(redemptionAmount)
+                .awardedPoints(awardedPoints)
                 .build();
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
@@ -99,12 +122,14 @@ public class InvoiceService {
                 .map(this::mapToInvoiceResponse);
     }
 
+    @Transactional
     public InvoiceResponse updateInvoice(UUID id, InvoiceUpdateRequest request) {
         Invoice invoice = invoiceRepository.findById(id)
                 .orElseThrow(() -> new CustomException("Invoice with ID " + id + " not found"));
 
+        SalesOrder salesOrder = null;
         if (request.getSalesOrderId() != null) {
-            SalesOrder salesOrder = salesOrderRepository.findById(request.getSalesOrderId())
+            salesOrder = salesOrderRepository.findById(request.getSalesOrderId())
                     .orElseThrow(() -> new CustomException("Sales order with ID " + request.getSalesOrderId() + " not found"));
 
             if (salesOrder.getStatus() == OrderStatus.CANCELLED) {
@@ -112,10 +137,30 @@ public class InvoiceService {
             }
             invoice.setSalesOrderId(request.getSalesOrderId());
         }
+
+        if (salesOrder == null) {
+            salesOrder = salesOrderRepository.findById(invoice.getSalesOrderId())
+                    .orElseThrow(() -> new CustomException("Sales order with ID " + invoice.getSalesOrderId() + " not found"));
+        }
+
+        BigDecimal totalBeforeDiscount = salesOrder.getTotalAmount();
+
         if (request.getInvoiceDate() != null) {
             invoice.setInvoiceDate(request.getInvoiceDate());
         }
-        if (request.getPaymentStatus() != null) {
+
+        if (request.getPaymentStatus() != null && request.getPaymentStatus() != invoice.getPaymentStatus()) {
+            if (request.getPaymentStatus() == PaymentStatus.PAID && invoice.getPaymentStatus() != PaymentStatus.PAID) {
+                try {
+                    int awardedPoints = loyaltyClient.calculateAndAwardPoints(salesOrder.getCustomerId(), totalBeforeDiscount);
+                    salesOrder.setAwardedPoints(awardedPoints);
+                    invoice.setAwardedPoints(awardedPoints);
+                    salesOrderRepository.save(salesOrder);
+                    System.out.println("Awarded " + awardedPoints + " points for customer ID: " + salesOrder.getCustomerId() + ", amount: " + totalBeforeDiscount);
+                } catch (FeignException e) {
+                    throw new CustomException("Failed to award points via loyalty service: " + e.getMessage());
+                }
+            }
             invoice.setPaymentStatus(request.getPaymentStatus());
         }
 
@@ -139,24 +184,17 @@ public class InvoiceService {
         response.setCreatedAt(invoice.getCreatedAt());
         response.setUpdatedAt(invoice.getUpdatedAt());
 
-        // Fetch the SalesOrder to get the total amount
         SalesOrder salesOrder = salesOrderRepository.findById(invoice.getSalesOrderId())
                 .orElseThrow(() -> new CustomException("Sales order with ID " + invoice.getSalesOrderId() + " not found"));
         response.setTotalAmount(salesOrder.getTotalAmount());
+//        response.setAwardedPoints(salesOrder.getAwardedPoints()); // Use the persisted field
+        // Handle null awardedPoints
+        response.setAwardedPoints(salesOrder.getAwardedPoints() != null ? salesOrder.getAwardedPoints() : 0);
 
-
-//        // Calculate and set the redemption amount
-//        if (salesOrder.getRedemptionDiscount() != null) {
-//            response.setRedemptionAmount(BigDecimal.valueOf(salesOrder.getRedemptionDiscount()));
-//        } else {
-//            response.setRedemptionAmount(BigDecimal.ZERO);
-//        }
-
-        // Only set redemptionAmount if there was a redemption
         if (salesOrder.getRedemptionDiscount() != null && salesOrder.getRedemptionDiscount() > 0) {
-            response.setRedemptionAmount(BigDecimal.valueOf(salesOrder.getRedemptionDiscount()));
-        } // Else, it remains null and is excluded from JSON
-
+//            response.setRedemptionAmount(BigDecimal.valueOf(salesOrder.getRedemptionDiscount()));
+            response.setRedemptionAmount(invoice.getRedemptionAmount() != null ? invoice.getRedemptionAmount() : BigDecimal.ZERO); // Use invoice's redemptionAmount
+        }
 
         return response;
     }

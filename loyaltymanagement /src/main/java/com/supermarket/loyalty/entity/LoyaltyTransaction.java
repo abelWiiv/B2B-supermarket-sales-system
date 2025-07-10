@@ -32,11 +32,18 @@ public class LoyaltyTransaction {
     @Column(name = "related_customer_id")
     private UUID relatedCustomerId;
 
+    @Column(name = "related_transaction_id")
+    private UUID relatedTransactionId;
+
+    @Column(name = "is_reverse")
+    private boolean reversed = false;
+
     public enum TransactionType {
         EARN,
         REDEEM,
         TRANSFER_IN,
-        TRANSFER_OUT
+        TRANSFER_OUT,
+        REVERSAL
     }
 
     // Constructor
@@ -48,6 +55,24 @@ public class LoyaltyTransaction {
     public UUID getId() {
         return id;
     }
+
+
+    public UUID getRelatedTransactionId() {
+        return relatedTransactionId;
+    }
+
+    public void setRelatedTransactionId(UUID relatedTransactionId) {
+        this.relatedTransactionId = relatedTransactionId;
+    }
+
+    public boolean isReversed() {
+        return reversed;
+    }
+
+    public void setReversed(boolean reversed) {
+        this.reversed = reversed;
+    }
+
 
     public void setId(UUID id) {
         this.id = id;

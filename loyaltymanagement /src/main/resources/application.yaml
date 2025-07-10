@@ -9,7 +9,7 @@ spring:
     name: loyalty-management-service
   datasource:
 #    url: ${DB_URL:jdbc:postgresql://localhost:5432/loyalty_management_db}
-    url: ${DB_URL:jdbc:postgresql://localhost:55666/loyalty_management_db}
+    url: ${DB_URL:jdbc:postgresql://localhost:53523/loyalty_management_db}
 #    username: ${DB_USERNAME}
 #    password: ${DB_PASSWORD}
     username: ${DB_USERNAME:postgres}

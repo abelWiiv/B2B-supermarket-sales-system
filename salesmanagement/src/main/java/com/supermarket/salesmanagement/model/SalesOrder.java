@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 import com.supermarket.salesmanagement.model.enums.OrderStatus;
 
+
 @Entity
 @Table(name = "sales_orders")
 @Data
@@ -17,6 +18,7 @@ import com.supermarket.salesmanagement.model.enums.OrderStatus;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SalesOrder {
+
     @Id
     private UUID id;
 
@@ -40,14 +42,16 @@ public class SalesOrder {
     private LocalDateTime updatedAt;
 
     @Column(name = "total_amount", nullable = false)
-    private BigDecimal totalAmount; // Added field
+    private BigDecimal totalAmount;
 
+    @Column(name = "awarded_points")
+    private Integer awardedPoints; // Standardized field
 
-    // Ensure setter exists
-    private Integer pointsAwarded;
+    @Column(name = "points_redeemed")
     private Integer pointsRedeemed;
-    private Double redemptionDiscount;
 
+    @Column(name = "redemption_discount")
+    private Double redemptionDiscount;
 
     @OneToMany(mappedBy = "salesOrder", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SalesOrderItem> items = new ArrayList<>();
@@ -57,7 +61,7 @@ public class SalesOrder {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
         if (this.totalAmount == null) {
-            this.totalAmount = BigDecimal.ZERO; // Default for DRAFT
+            this.totalAmount = BigDecimal.ZERO;
         }
         if (this.id == null) {
             this.id = UUID.randomUUID();
@@ -69,7 +73,6 @@ public class SalesOrder {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // Helper method to calculate total_amount from items
     public void calculateTotalAmount() {
         this.totalAmount = items.stream()
                 .map(SalesOrderItem::getTotalPrice)

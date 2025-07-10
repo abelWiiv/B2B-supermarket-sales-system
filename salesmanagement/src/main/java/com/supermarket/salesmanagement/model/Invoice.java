@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -30,6 +32,12 @@ public class Invoice {
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false)
     private PaymentStatus paymentStatus;
+
+    @Column(name = "redemption_amount")
+    private BigDecimal redemptionAmount; // New field
+
+    @Column(name = "awarded_points")
+    private Integer awardedPoints; // New field
 
     @CreationTimestamp
     @Column(name = "created_at")
