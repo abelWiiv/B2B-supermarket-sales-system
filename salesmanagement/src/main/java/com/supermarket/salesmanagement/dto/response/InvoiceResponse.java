@@ -20,4 +20,5 @@ public class InvoiceResponse {
     private LocalDateTime updatedAt;
     private BigDecimal totalAmount; // New field to store the total amount after redemption
     private BigDecimal redemptionAmount; // New field for the amount redeemed
+    private int awardedPoints;
 }

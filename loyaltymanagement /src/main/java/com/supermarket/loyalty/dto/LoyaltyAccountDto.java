@@ -1,8 +1,8 @@
-package com.supermarket.salesmanagement.dto;
+package com.supermarket.loyalty.dto;
 
 import java.util.UUID;
 
-public class LoyaltyAccount {
+public class LoyaltyAccountDto {
     private UUID id;
     private UUID customerId;
     private Integer pointsBalance;
@@ -39,21 +39,5 @@ public class LoyaltyAccount {
 
     public void setUserType(String userType) {
         this.userType = userType;
-    }
-
-    // Derive redeemMultiplier based on userType
-    public Double getRedeemMultiplier() {
-        if (userType == null) {
-            return 1.0; // Default multiplier
-        }
-        switch (userType) {
-            case "VIP":
-                return 0.5; // Example multiplier
-            case "PREMIUM":
-                return 0.75;
-            case "NORMAL":
-            default:
-                return 1.0;
-        }
     }
 }

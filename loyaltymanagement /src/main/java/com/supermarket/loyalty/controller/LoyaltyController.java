@@ -1,12 +1,14 @@
 package com.supermarket.loyalty.controller;
 
-import com.supermarket.loyalty.entity.LoyaltyAccount;
+import com.supermarket.loyalty.dto.LoyaltyAccountDto;
 import com.supermarket.loyalty.entity.LoyaltyTransaction;
 import com.supermarket.loyalty.service.LoyaltyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,28 +16,45 @@ import java.util.UUID;
 @RequestMapping("/api/v1/loyalty")
 public class LoyaltyController {
 
+    private final LoyaltyService loyaltyService;
+
     @Autowired
-    private LoyaltyService loyaltyService;
+    public LoyaltyController(LoyaltyService loyaltyService) {
+        this.loyaltyService = loyaltyService;
+    }
 
     @PostMapping("/account/{customerId}")
     @PreAuthorize("hasAuthority('CREATE_SALES_ORDER')")
-    public ResponseEntity<LoyaltyAccount> createAccount(@PathVariable UUID customerId) {
-        LoyaltyAccount account = loyaltyService.createAccount(customerId);
-        return ResponseEntity.ok(account);
+    public ResponseEntity<LoyaltyAccountDto> createAccount(@PathVariable UUID customerId,
+                                                           @RequestParam(defaultValue = "NORMAL") String userType) {
+        LoyaltyAccountDto accountDto = loyaltyService.createAccount(customerId, userType);
+        return ResponseEntity.ok(accountDto);
     }
 
     @GetMapping("/account/{customerId}")
     @PreAuthorize("hasAuthority('CREATE_SALES_ORDER')")
-    public ResponseEntity<LoyaltyAccount> getAccount(@PathVariable UUID customerId) {
-        LoyaltyAccount account = loyaltyService.getAccount(customerId);
-        return ResponseEntity.ok(account);
+    public ResponseEntity<LoyaltyAccountDto> getAccount(@PathVariable UUID customerId) {
+        LoyaltyAccountDto accountDto = loyaltyService.getAccount(customerId);
+        return ResponseEntity.ok(accountDto);
     }
+
+
+
+    @PostMapping("/reverse/{customerId}")
+    @PreAuthorize("hasAuthority('CREATE_SALES_ORDER')")
+    public ResponseEntity<Void> reversePoints(@PathVariable UUID customerId, @RequestParam UUID transactionId) {
+        loyaltyService.reversePoints(customerId, transactionId);
+        return ResponseEntity.ok().build();
+    }
+
+
 
     @PostMapping("/award/{customerId}")
     @PreAuthorize("hasAuthority('CREATE_SALES_ORDER')")
-    public ResponseEntity<Void> awardPoints(@PathVariable UUID customerId, @RequestParam Integer points) {
-        loyaltyService.awardPoints(customerId, points);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Integer> calculateAndAwardPoints(@PathVariable UUID customerId,
+                                                           @RequestParam BigDecimal totalBeforeDiscount) {
+        Integer points = loyaltyService.calculateAndAwardPoints(customerId, totalBeforeDiscount);
+        return ResponseEntity.ok(points);
     }
 
     @PostMapping("/redeem/{customerId}")
@@ -59,5 +78,13 @@ public class LoyaltyController {
     public ResponseEntity<List<LoyaltyTransaction>> getTransactionHistory(@PathVariable UUID customerId) {
         List<LoyaltyTransaction> transactions = loyaltyService.getTransactionHistory(customerId);
         return ResponseEntity.ok(transactions);
+    }
+
+    @PutMapping("/account/{customerId}/user-type")
+    @PreAuthorize("hasAuthority('CREATE_SALES_ORDER')")
+    public ResponseEntity<LoyaltyAccountDto> changeUserType(@PathVariable UUID customerId,
+                                                            @RequestParam String userType) {
+        LoyaltyAccountDto accountDto = loyaltyService.changeUserType(customerId, userType);
+        return ResponseEntity.ok(accountDto);
     }
 }

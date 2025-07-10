@@ -1,24 +1,27 @@
--- Create the loyalty_account table referencing the correct 'customers' table
-CREATE TABLE loyalty_account (
-    id UUID PRIMARY KEY,
-    customer_id UUID NOT NULL UNIQUE,
-    points_balance INTEGER NOT NULL DEFAULT 0,
-);
-
--- Create an index on customer_id in the loyalty_account table
-CREATE INDEX idx_loyalty_customer_id ON loyalty_account(customer_id);
-
-
--- Create the loyalty_transaction table with references to loyalty_account
-  CREATE TABLE loyalty_transaction (
-      id UUID PRIMARY KEY,
-      customer_id UUID NOT NULL,x
-      transaction_type VARCHAR(20) NOT NULL,
-      points INTEGER NOT NULL,
-      description VARCHAR(255),
-      transaction_date TIMESTAMP NOT NULL,
-      related_customer_id UUID,
-      FOREIGN KEY (customer_id) REFERENCES loyalty_account(customer_id)
+ -- Create the loyalty_account table
+ CREATE TABLE loyalty_account (
+     id UUID PRIMARY KEY,
+     customer_id UUID NOT NULL UNIQUE,
+     user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('NORMAL', 'PREMIUM', 'VIP')),
+     points_balance INTEGER NOT NULL DEFAULT 0
  );
 
+ -- Create an index on customer_id in the loyalty_account table
+ CREATE INDEX idx_loyalty_customer_id ON loyalty_account(customer_id);
 
+ -- Create the loyalty_transaction table with reference to itself
+ CREATE TABLE loyalty_transaction (
+     id UUID PRIMARY KEY,
+     customer_id UUID NOT NULL,
+     transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('EARN', 'REDEEM', 'TRANSFER_IN', 'TRANSFER_OUT', 'REVERSAL')),
+     points INTEGER NOT NULL,
+     description VARCHAR(255),
+     transaction_date TIMESTAMP NOT NULL,
+     related_customer_id UUID,
+     related_transaction_id UUID,
+     reversed BOOLEAN NOT NULL DEFAULT FALSE,
+     FOREIGN KEY (related_transaction_id) REFERENCES loyalty_transaction(id) ON DELETE SET NULL
+ );
+
+ -- Create an index on customer_id and transaction_date for efficient history queries
+ CREATE INDEX idx_loyalty_transaction_customer_date ON loyalty_transaction(customer_id, transaction_date);

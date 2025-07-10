@@ -32,6 +32,8 @@ CREATE TABLE invoices (
     sales_order_id UUID NOT NULL,
     invoice_date DATE NOT NULL,
     payment_status VARCHAR(20) NOT NULL CHECK (payment_status IN ('PAID', 'UNPAID', 'PARTIALLY_PAID')),
+    redemption_amount DECIMAL(10, 2), -- New column for redemption amount
+    awarded_points INTEGER, -- New column for awarded points
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id) ON DELETE RESTRICT

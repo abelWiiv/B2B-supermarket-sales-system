@@ -14,8 +14,12 @@ data:
         shop_id UUID NOT NULL,
         order_date DATE NOT NULL,
         status VARCHAR(20) NOT NULL CHECK (status IN ('DRAFT','PENDING', 'CONFIRMED', 'CANCELLED')),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        awarded_points INTEGER,
+        points_redeemed INTEGER,
+        redemption_discount DOUBLE PRECISION
     );
 
     -- Sales Order Items table
@@ -29,7 +33,7 @@ data:
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id) ON DELETE CASCADE
-       
+    
     );
 
     -- Invoices table
@@ -38,6 +42,8 @@ data:
         sales_order_id UUID NOT NULL,
         invoice_date DATE NOT NULL,
         payment_status VARCHAR(20) NOT NULL CHECK (payment_status IN ('PAID', 'UNPAID', 'PARTIALLY_PAID')),
+        redemption_amount DECIMAL(10, 2),
+        awarded_points INTEGER,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id) ON DELETE RESTRICT

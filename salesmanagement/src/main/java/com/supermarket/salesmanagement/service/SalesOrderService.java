@@ -287,16 +287,13 @@ public class SalesOrderService {
         BigDecimal totalBeforeDiscount = salesOrder.getItems().stream()
                 .map(item -> item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        Integer points = totalBeforeDiscount.multiply(BigDecimal.valueOf(pointsAwardRate))
-                .intValue();
-        salesOrder.setPointsAwarded(points);
-
-        // Call Loyalty Service to award points
-        try {
-            loyaltyClient.awardPoints(salesOrder.getCustomerId(), points);
-        } catch (FeignException e) {
-            throw new CustomException("Failed to award points: " + e.getMessage());
-        }
+//        Integer points;
+//        try {
+//            points = loyaltyClient.calculateAndAwardPoints(salesOrder.getCustomerId(), totalBeforeDiscount);
+//            salesOrder.setAwardedPoints(points);
+//        } catch (FeignException e) {
+//            throw new CustomException("Failed to calculate and award points: " + e.getMessage());
+//        }
 
         salesOrder.calculateTotalAmount();
         SalesOrder confirmedOrder = salesOrderRepository.save(salesOrder);
@@ -383,7 +380,7 @@ public class SalesOrderService {
         response.setTotalAmount(salesOrder.getTotalAmount());
         // Only include pointsAwarded if order is confirmed
         if (salesOrder.getStatus() == OrderStatus.CONFIRMED) {
-            response.setPointsAwarded(salesOrder.getPointsAwarded());
+            response.setPointsAwarded(salesOrder.getAwardedPoints());
         }
         response.setItems(salesOrder.getItems().stream()
                 .map(item -> {

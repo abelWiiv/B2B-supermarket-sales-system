@@ -18,6 +18,38 @@ public class LoyaltyAccount {
     @Column(name = "points_balance", nullable = false)
     private Integer pointsBalance;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "user_type", nullable = false)
+    private UserType userType;
+
+    public enum UserType {
+        NORMAL(100, 1.0, 1.0),
+        PREMIUM(200, 1.5, 1.2),
+        VIP(500, 2.0, 1.0);
+
+        private final int initialPoints;
+        private final double awardMultiplier;
+        private final double redeemMultiplier;
+
+        UserType(int initialPoints, double awardMultiplier, double redeemMultiplier) {
+            this.initialPoints = initialPoints;
+            this.awardMultiplier = awardMultiplier;
+            this.redeemMultiplier = redeemMultiplier;
+        }
+
+        public int getInitialPoints() {
+            return initialPoints;
+        }
+
+        public double getAwardMultiplier() {
+            return awardMultiplier;
+        }
+
+        public double getRedeemMultiplier() {
+            return redeemMultiplier;
+        }
+    }
+
     // Getters and Setters
     public UUID getId() {
         return id;
@@ -41,5 +73,13 @@ public class LoyaltyAccount {
 
     public void setPointsBalance(Integer pointsBalance) {
         this.pointsBalance = pointsBalance;
+    }
+
+    public UserType getUserType() {
+        return userType;
+    }
+
+    public void setUserType(UserType userType) {
+        this.userType = userType;
     }
 }
