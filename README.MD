@@ -159,5 +159,3 @@ Port Conflicts: If ports 8081-8086 or 5432-5437 are in use, update the docker-co
 JWT Errors: Ensure the JWT_SECRET in the .env file is consistent across all microservices.
 Build Failures: Run mvn clean install again and check for missing dependencies or Java version mismatches.
 
-Contact
-For issues or questions, contact the project author at nitish.jhummun@example.com.
